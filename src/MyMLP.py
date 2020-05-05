@@ -123,28 +123,27 @@ if __name__ == '__main__':
     num_users, num_items = train.shape
     # 学习速率
     learning_rate = 0.001
-    K = 10 # latent dimensionality
+    # 分析的top-k
+    K = 10
     # mu = train.rating.mean()
     epochs = 20
     batch_size = 256
 
-    # 隐含向量
-    # num_factors  = 8
-
     # 消极例子
-    num_negatives = 4
-    # # 负反馈
-    # testNegatives = [] 
-
+    num_negatives = 20
+    # 神经网络每一层的节点
+    layers =  [80,40,20]
+    # 每一层的正则
+    reg_layers=[0,0,0]
     # 模型输出文件名
-    model_out_file = 'Pretrain/%s_MLP_%d_%d.h5'
+    model_out_file = 'Pretrain/_MLP_%s.h5' %(layers)
     # 建立模型
-    model = get_model(num_users, num_items)
+    model = get_model(num_users, num_items,layers,reg_layers)
     # 我们用普通SGD而不是Adam进行优化。 这是因为Adam需要保存更新参数的动量信息（momentum information）
     model.compile(optimizer=SGD(lr=learning_rate), loss='binary_crossentropy')    
     t1 = time()
     testRatings = testRatings[:49]
-    (hits, ndcgs) = evaluate_model(model, testRatings, testNegatives, 6, 1)
+    (hits, ndcgs) = evaluate_model(model, testRatings, testNegatives, K, 1)
     hr, ndcg = np.array(hits).mean(), np.array(ndcgs).mean()
     print('Init: HR = %.4f, NDCG = %.4f\t [%.1f s]' % (hr, ndcg, time()-t1))
     best_hr, best_ndcg, best_iter = hr, ndcg, -1

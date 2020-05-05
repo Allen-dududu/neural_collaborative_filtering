@@ -39,10 +39,7 @@ def get_train_instances(train, num_negatives):
             labels.append(0)
     return user_input, item_input, labels
 
-def init_normal(shape, name=None):
-    # scale: 缩放因子（正浮点数）
-    # shape 没有传就是使用默认的
-    return initializers.RandomNormal(mean=0.0, stddev=0.05, seed=None)
+
 
 def get_model(num_users, num_items, latent_dim):
 
@@ -54,14 +51,14 @@ def get_model(num_users, num_items, latent_dim):
     MF_Embedding_User = Embedding(input_dim = num_users, output_dim = latent_dim , name = 'user_embedding',
                                    embeddings_regularizer = regularizers.l2(0.0), input_length=1)
     MF_Embedding_Item = Embedding(input_dim = num_items, output_dim = latent_dim, name = 'item_embedding',
-                                   embeddings_regularizer = regularizers.l2(0.0), input_length=1)   
+                                  embeddings_regularizer = regularizers.l2(0.0), input_length=1)   
     
     # Crucial to flatten an embedding vector!
     user_latent = Flatten()(MF_Embedding_User(user_input))
     item_latent = Flatten()(MF_Embedding_Item(item_input))
     
-
-    predict_vector = Concatenate()([user_latent, item_latent])
+    # 矩阵相乘
+    predict_vector = keras.layers.multiply([user_latent, item_latent])
     
     # Final prediction layer
     #prediction = Lambda(lambda x: K.sigmoid(K.sum(x)), output_shape=(1,))(predict_vector)
@@ -77,7 +74,8 @@ if __name__ == '__main__':
     num_users, num_items = train.shape
     # 学习速率
     learning_rate = 0.001
-    K = 10 # latent dimensionality
+    # 分析的top-k
+    K = 10
     # mu = train.rating.mean()
     epochs = 20
     batch_size = 256
@@ -89,17 +87,17 @@ if __name__ == '__main__':
     # testNegatives = [] 
 
     # 模型输出文件名
-    model_out_file = 'Pretrain/%s_GMF_%d_%d.h5'
+    model_out_file = 'Pretrain/_GMF_%d.h5' %(num_factors)
     # 建立模型
     model = get_model(num_users, num_items, num_factors)
     # 我们用普通SGD而不是Adam进行优化。 这是因为Adam需要保存更新参数的动量信息（momentum information）
     model.compile(optimizer=SGD(lr=learning_rate), loss='binary_crossentropy')
 
     testRatings = testRatings[:49]
-    (hits, ndcgs) = evaluate_model(model, testRatings, testNegatives, 6, 1)
+    (hits, ndcgs) = evaluate_model(model, testRatings, testNegatives, K, 1)
     hr, ndcg = np.array(hits).mean(), np.array(ndcgs).mean()
     print('Init: HR = %.4f, NDCG = %.4f\t' % (hr, ndcg))
-    
+
     best_hr, best_ndcg, best_iter = hr, ndcg, -1
     for epoch in range(epochs):
         t1 = time()
